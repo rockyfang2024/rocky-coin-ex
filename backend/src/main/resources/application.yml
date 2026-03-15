@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: my-coin-ex-backend
+server:
+  port: 8080
