@@ -1,4 +1,4 @@
-# my-coin-ex
+# rocky-coin-ex
 
 基于 **Java + Spring Boot + Vue 3** 的简易加密货币交易所系统示例，包含用户端与管理系统端功能。
 
