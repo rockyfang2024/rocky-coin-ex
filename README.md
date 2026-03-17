@@ -1,42 +1,42 @@
 # rocky-coin-ex
 
-基于 **Java + Spring Boot + Vue 3** 的简易加密货币交易所系统示例，包含用户端与管理系统端功能。
+Simple cryptocurrency exchange system example based on **Java + Spring Boot + Vue 3**, including user-facing and admin-system features.
 
-## 功能概览
+## Features Overview
 
-### 用户端
-- 用户注册 / 登录
-- TradingView 行情 + 盘口展示
-- 现货与合约交易（下单、撤单、开仓、平仓）
-- 查看交易记录、订单、持仓
-- 现货账户、合约账户、资金账户
-- 账户间资金划转
+### User Side
+- User registration / login
+- TradingView charts + order book display
+- Spot and contract trading (place/cancel orders, open/close positions)
+- View trade history, orders, and positions
+- Spot account, contract account, funding account
+- Transfers between accounts
 
-### 管理系统端
-- 现货与合约币对配置
-- 查看用户交易记录
-- 空投至用户资金账户
-- 用户管理与账户余额查看
+### Admin System
+- Configure spot and contract trading pairs
+- View user trade history
+- Airdrop to user funding accounts
+- User management and balance viewing
 
-## 本地运行
+## Local Development
 
-### 后端（Spring Boot）
+### Backend (Spring Boot)
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-默认管理员账号：
-- 用户名：`admin`
-- 密码：`admin123`
+Default admin account:
+- Username: `admin`
+- Password: `admin123`
 
-新注册用户默认在资金账户获得 10,000 USDT，方便体验划转与交易流程。
+Newly registered users receive 10,000 USDT in the funding account by default, making it easy to try transfers and trading flows.
 
-### 前端（Vue 3 + Vite）
+### Frontend (Vue 3 + Vite)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-前端默认访问后端 `http://localhost:8080`，可以在页面顶部修改 API 地址。
+The frontend points to `http://localhost:8080` by default, and you can change the API endpoint at the top of the page.
