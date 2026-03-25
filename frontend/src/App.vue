@@ -8,7 +8,7 @@ const auth = reactive({
   admin: localStorage.getItem('admin') === 'true',
   userId: Number(localStorage.getItem('userId') || 0)
 })
-const activeTab = ref(auth.admin ? 'admin' : 'user')
+const activeView = ref(auth.admin ? 'admin' : 'market')
 const message = ref('')
 
 const loginForm = reactive({ username: '', password: '' })
@@ -40,27 +40,22 @@ const adminSymbolForm = reactive({
   spotEnabled: true,
   contractEnabled: true
 })
-const airdropForm = reactive({
-  userId: '',
-  currency: 'USDT',
-  amount: ''
-})
 
 const symbols = ref([])
+const spotSymbols = computed(() => symbols.value.filter((symbol) => symbol.spotEnabled))
+const contractSymbols = computed(() => symbols.value.filter((symbol) => symbol.contractEnabled))
 const selectedSymbol = ref('')
 const orderBook = reactive({ bids: [], asks: [] })
 const balances = ref({})
 const orders = ref([])
 const positions = ref([])
 const trades = ref([])
-const adminUsers = ref([])
-const adminTrades = ref([])
 const adminSymbols = ref([])
 
 const chartUrl = computed(() => {
   if (!selectedSymbol.value) return ''
   const cleanSymbol = selectedSymbol.value.replace('/', '')
-  return `https://s.tradingview.com/widgetembed/?symbol=BINANCE:${cleanSymbol}&interval=1&hidesidetoolbar=1&theme=light`
+  return `https://s.tradingview.com/widgetembed/?symbol=BINANCE:${cleanSymbol}&interval=1&hidesidetoolbar=1&theme=dark`
 })
 
 const formatAmount = (value) => {
@@ -114,7 +109,7 @@ const login = async () => {
       body: JSON.stringify(loginForm)
     })
     storeAuth(data)
-    activeTab.value = data.admin ? 'admin' : 'user'
+    activeView.value = data.admin ? 'admin' : 'market'
     message.value = `欢迎回来，${data.username}`
     await loadAllData()
   } catch (error) {
@@ -129,7 +124,7 @@ const register = async () => {
       body: JSON.stringify(registerForm)
     })
     storeAuth(data)
-    activeTab.value = data.admin ? 'admin' : 'user'
+    activeView.value = data.admin ? 'admin' : 'market'
     message.value = `注册成功，欢迎 ${data.username}`
     await loadAllData()
   } catch (error) {
@@ -139,19 +134,30 @@ const register = async () => {
 
 const logout = () => {
   clearAuth()
-  activeTab.value = 'user'
+  activeView.value = 'market'
   message.value = '已退出登录'
+}
+
+const selectSymbol = (symbol) => {
+  selectedSymbol.value = symbol
+}
+
+const syncSymbolSelections = () => {
+  const allSymbols = symbols.value.map((symbol) => symbol.symbol)
+  if (!allSymbols.includes(selectedSymbol.value)) {
+    selectedSymbol.value = allSymbols[0] || ''
+  }
+  if (!spotSymbols.value.some((symbol) => symbol.symbol === spotOrderForm.symbol)) {
+    spotOrderForm.symbol = spotSymbols.value[0]?.symbol || ''
+  }
+  if (!contractSymbols.value.some((symbol) => symbol.symbol === contractOrderForm.symbol)) {
+    contractOrderForm.symbol = contractSymbols.value[0]?.symbol || ''
+  }
 }
 
 const loadSymbols = async () => {
   symbols.value = await request('/api/trading/symbols')
-  if (!selectedSymbol.value && symbols.value.length > 0) {
-    selectedSymbol.value = symbols.value[0].symbol
-  }
-  if (!spotOrderForm.symbol && symbols.value.length > 0) {
-    spotOrderForm.symbol = symbols.value[0].symbol
-    contractOrderForm.symbol = symbols.value[0].symbol
-  }
+  syncSymbolSelections()
 }
 
 const loadOrderBook = async () => {
@@ -182,8 +188,6 @@ const loadPositions = async () => {
 const loadAdminData = async () => {
   if (!auth.admin) return
   adminSymbols.value = await request('/api/admin/symbols')
-  adminUsers.value = await request('/api/admin/users')
-  adminTrades.value = await request('/api/admin/trades')
 }
 
 const loadAllData = async () => {
@@ -290,24 +294,6 @@ const saveSymbol = async () => {
   }
 }
 
-const submitAirdrop = async () => {
-  try {
-    await request('/api/admin/airdrop', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: Number(airdropForm.userId),
-        currency: airdropForm.currency,
-        amount: Number(airdropForm.amount)
-      })
-    })
-    message.value = '空投完成'
-    airdropForm.amount = ''
-    await loadAdminData()
-  } catch (error) {
-    handleError(error)
-  }
-}
-
 watch(selectedSymbol, async () => {
   await loadOrderBook()
 })
@@ -322,19 +308,47 @@ onMounted(async () => {
 <template>
   <div class="app">
     <header class="app-header">
-      <div>
-        <h1>My Coin Exchange 简易交易所</h1>
-        <p>用户端与管理端一体化演示，支持现货、合约、资金划转</p>
+      <div class="brand">
+        <div>
+          <h1>Rocky Coin Exchange</h1>
+          <p>行情与资产中心分离，支持现货与合约配置</p>
+        </div>
+      </div>
+      <div class="header-actions">
         <div class="api-config">
           <label>API 地址</label>
           <input v-model="apiBase" />
         </div>
-      </div>
-      <div class="auth-status">
-        <div v-if="auth.token" class="user-info">
-          <span>当前用户：{{ auth.username }}</span>
-          <span v-if="auth.admin" class="badge">管理员</span>
-          <button class="ghost" @click="logout">退出</button>
+        <nav v-if="auth.token" class="nav-links">
+          <button
+            :class="{ active: activeView === 'market' }"
+            :aria-current="activeView === 'market' ? 'page' : undefined"
+            @click="activeView = 'market'"
+          >
+            行情
+          </button>
+          <button
+            :class="{ active: activeView === 'center' }"
+            :aria-current="activeView === 'center' ? 'page' : undefined"
+            @click="activeView = 'center'"
+          >
+            个人中心
+          </button>
+          <button
+            v-if="auth.admin"
+            :class="{ active: activeView === 'admin' }"
+            :aria-current="activeView === 'admin' ? 'page' : undefined"
+            @click="activeView = 'admin'"
+          >
+            管理后台
+          </button>
+        </nav>
+        <div class="auth-status">
+          <div v-if="auth.token" class="user-info">
+            <span>当前用户：{{ auth.username }}</span>
+            <span v-if="auth.admin" class="badge">管理员</span>
+            <button class="ghost" @click="logout">退出</button>
+          </div>
         </div>
       </div>
     </header>
@@ -373,32 +387,112 @@ onMounted(async () => {
       {{ message }}
     </section>
 
-    <div v-if="auth.token" class="tab-bar">
-      <button :class="{ active: activeTab === 'user' }" @click="activeTab = 'user'">用户端</button>
-      <button
-        v-if="auth.admin"
-        :class="{ active: activeTab === 'admin' }"
-        @click="activeTab = 'admin'"
-      >
-        管理系统端
-      </button>
-    </div>
-
-    <section v-if="auth.token && activeTab === 'user'" class="grid two">
-      <div class="card">
-        <h2>TradingView 行情</h2>
-        <div class="form-row">
-          <label>交易对</label>
-          <select v-model="selectedSymbol">
-            <option v-for="symbol in symbols" :key="symbol.symbol" :value="symbol.symbol">
-              {{ symbol.symbol }}
-            </option>
-          </select>
+    <section v-if="auth.token && activeView === 'market'" class="market-layout">
+      <div class="card market-list">
+        <div class="market-list-header">
+          <h2>行情列表</h2>
+          <span class="muted">{{ symbols.length }} 个币对</span>
         </div>
-        <iframe v-if="chartUrl" :src="chartUrl" class="chart-frame" allowfullscreen></iframe>
+        <ul class="symbol-list">
+          <li
+            v-for="symbol in symbols"
+            :key="symbol.symbol"
+            :class="{ active: selectedSymbol === symbol.symbol }"
+            role="button"
+            tabindex="0"
+            @click="selectSymbol(symbol.symbol)"
+            @keydown.enter="selectSymbol(symbol.symbol)"
+            @keydown.space.prevent="selectSymbol(symbol.symbol)"
+          >
+            <div class="symbol-name">{{ symbol.symbol }}</div>
+            <div class="symbol-tags">
+              <span v-if="symbol.spotEnabled" class="tag spot">现货</span>
+              <span v-if="symbol.contractEnabled" class="tag contract">合约</span>
+            </div>
+          </li>
+          <li v-if="symbols.length === 0" class="empty">暂无币对</li>
+        </ul>
       </div>
 
-      <div class="card">
+      <div class="market-main">
+        <div class="card market-chart">
+          <div class="market-chart-header">
+            <div>
+              <h2>行情图表</h2>
+              <p class="muted">TradingView 实时行情</p>
+            </div>
+            <div class="form-row compact">
+              <label>交易对</label>
+              <select v-model="selectedSymbol">
+                <option v-for="symbol in symbols" :key="symbol.symbol" :value="symbol.symbol">
+                  {{ symbol.symbol }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <iframe v-if="chartUrl" :src="chartUrl" class="chart-frame" allowfullscreen></iframe>
+        </div>
+
+        <div class="grid two market-trade">
+          <div class="card">
+            <h2>现货交易</h2>
+            <div class="form-row">
+              <label>币对</label>
+              <select v-model="spotOrderForm.symbol">
+                <option v-for="symbol in spotSymbols" :key="symbol.symbol" :value="symbol.symbol">
+                  {{ symbol.symbol }}
+                </option>
+              </select>
+              <label>方向</label>
+              <select v-model="spotOrderForm.side">
+                <option>BUY</option>
+                <option>SELL</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>价格</label>
+              <input v-model="spotOrderForm.price" placeholder="0.00" />
+              <label>数量</label>
+              <input v-model="spotOrderForm.quantity" placeholder="0.00" />
+            </div>
+            <div class="form-row checkbox">
+              <input id="spotExecute" type="checkbox" v-model="spotOrderForm.executeImmediately" />
+              <label for="spotExecute">立即成交（取消勾选可用于撤单演示）</label>
+            </div>
+            <button @click="placeSpotOrder">下单</button>
+          </div>
+
+          <div class="card">
+            <h2>合约交易</h2>
+            <div class="form-row">
+              <label>币对</label>
+              <select v-model="contractOrderForm.symbol">
+                <option v-for="symbol in contractSymbols" :key="symbol.symbol" :value="symbol.symbol">
+                  {{ symbol.symbol }}
+                </option>
+              </select>
+              <label>方向</label>
+              <select v-model="contractOrderForm.side">
+                <option>LONG</option>
+                <option>SHORT</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>开仓价</label>
+              <input v-model="contractOrderForm.price" placeholder="0.00" />
+              <label>数量</label>
+              <input v-model="contractOrderForm.quantity" placeholder="0.00" />
+            </div>
+            <div class="form-row">
+              <label>保证金</label>
+              <input v-model="contractOrderForm.margin" placeholder="0.00" />
+            </div>
+            <button @click="openContract">开仓</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card market-orderbook">
         <h2>盘口（Order Book）</h2>
         <div class="orderbook">
           <div>
@@ -431,7 +525,9 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+    </section>
 
+    <section v-if="auth.token && activeView === 'center'" class="grid two">
       <div class="card">
         <h2>账户资产</h2>
         <div class="balances">
@@ -470,32 +566,7 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <h2>现货交易</h2>
-        <div class="form-row">
-          <label>币对</label>
-          <select v-model="spotOrderForm.symbol">
-            <option v-for="symbol in symbols" :key="symbol.symbol" :value="symbol.symbol">
-              {{ symbol.symbol }}
-            </option>
-          </select>
-          <label>方向</label>
-          <select v-model="spotOrderForm.side">
-            <option>BUY</option>
-            <option>SELL</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>价格</label>
-          <input v-model="spotOrderForm.price" placeholder="0.00" />
-          <label>数量</label>
-          <input v-model="spotOrderForm.quantity" placeholder="0.00" />
-        </div>
-        <div class="form-row checkbox">
-          <input id="spotExecute" type="checkbox" v-model="spotOrderForm.executeImmediately" />
-          <label for="spotExecute">立即成交（取消勾选可用于撤单演示）</label>
-        </div>
-        <button @click="placeSpotOrder">下单</button>
-        <h3>现货订单</h3>
+        <h2>现货订单</h2>
         <table>
           <thead>
             <tr><th>ID</th><th>币对</th><th>方向</th><th>价格</th><th>数量</th><th>状态</th><th>操作</th></tr>
@@ -520,32 +591,7 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <h2>合约交易</h2>
-        <div class="form-row">
-          <label>币对</label>
-          <select v-model="contractOrderForm.symbol">
-            <option v-for="symbol in symbols" :key="symbol.symbol" :value="symbol.symbol">
-              {{ symbol.symbol }}
-            </option>
-          </select>
-          <label>方向</label>
-          <select v-model="contractOrderForm.side">
-            <option>LONG</option>
-            <option>SHORT</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>开仓价</label>
-          <input v-model="contractOrderForm.price" placeholder="0.00" />
-          <label>数量</label>
-          <input v-model="contractOrderForm.quantity" placeholder="0.00" />
-        </div>
-        <div class="form-row">
-          <label>保证金</label>
-          <input v-model="contractOrderForm.margin" placeholder="0.00" />
-        </div>
-        <button @click="openContract">开仓</button>
-        <h3>当前持仓</h3>
+        <h2>当前持仓</h2>
         <table>
           <thead>
             <tr><th>ID</th><th>币对</th><th>方向</th><th>数量</th><th>保证金</th><th>状态</th><th>操作</th></tr>
@@ -590,7 +636,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section v-if="auth.token && auth.admin && activeTab === 'admin'" class="grid two">
+    <section v-if="auth.token && auth.admin && activeView === 'admin'" class="admin-layout">
       <div class="card">
         <h2>币种币对配置</h2>
         <div class="form-row">
@@ -613,70 +659,15 @@ onMounted(async () => {
         </div>
         <button @click="saveSymbol">保存币对</button>
         <h3>当前配置</h3>
-        <ul>
+        <ul class="symbol-config-list">
           <li v-for="symbol in adminSymbols" :key="symbol.symbol">
-            {{ symbol.symbol }} (现货 {{ symbol.spotEnabled ? '开启' : '关闭' }} / 合约
-            {{ symbol.contractEnabled ? '开启' : '关闭' }})
+            <span>{{ symbol.symbol }}</span>
+            <span class="muted">
+              现货 {{ symbol.spotEnabled ? '开启' : '关闭' }} / 合约
+              {{ symbol.contractEnabled ? '开启' : '关闭' }}
+            </span>
           </li>
         </ul>
-      </div>
-
-      <div class="card">
-        <h2>空投资金到账户</h2>
-        <div class="form-row">
-          <label>用户ID</label>
-          <input v-model="airdropForm.userId" placeholder="1001" />
-          <label>币种</label>
-          <input v-model="airdropForm.currency" placeholder="USDT" />
-        </div>
-        <div class="form-row">
-          <label>金额</label>
-          <input v-model="airdropForm.amount" placeholder="0.00" />
-        </div>
-        <button @click="submitAirdrop">空投</button>
-      </div>
-
-      <div class="card">
-        <h2>用户管理</h2>
-        <table>
-          <thead>
-            <tr><th>ID</th><th>用户名</th><th>角色</th><th>资金账户</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in adminUsers" :key="user.userId">
-              <td>{{ user.userId }}</td>
-              <td>{{ user.username }}</td>
-              <td>{{ user.admin ? '管理员' : '普通用户' }}</td>
-              <td>
-                <span v-if="user.balances && user.balances.FUNDING">
-                  <span v-for="(amount, currency) in user.balances.FUNDING" :key="currency">
-                    {{ currency }} {{ formatAmount(amount) }}
-                  </span>
-                </span>
-                <span v-else>-</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <h2>用户交易记录</h2>
-        <table>
-          <thead>
-            <tr><th>ID</th><th>用户ID</th><th>类型</th><th>币对</th><th>方向</th><th>数量</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="trade in adminTrades" :key="trade.id">
-              <td>{{ trade.id }}</td>
-              <td>{{ trade.userId }}</td>
-              <td>{{ trade.category }}</td>
-              <td>{{ trade.symbol }}</td>
-              <td>{{ trade.side }}</td>
-              <td>{{ trade.quantity }}</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </section>
   </div>

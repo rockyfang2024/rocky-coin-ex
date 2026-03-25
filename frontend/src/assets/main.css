@@ -1,13 +1,20 @@
 @import './base.css';
 
+:root {
+  --color-label: #cbd5f5;
+  --color-muted: #94a3b8;
+  --admin-card-max-width: 720px;
+}
+
 body {
-  background: #f5f7fb;
+  background: #0b1426;
+  color: #e2e8f0;
 }
 
 #app {
-  max-width: 1320px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 .app {
@@ -18,13 +25,50 @@ body {
 
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
-  background: white;
+  gap: 1.5rem;
+  background: #111827;
   padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 10px 30px rgba(3, 7, 18, 0.45);
+}
+
+.brand h1 {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.brand p {
+  margin-top: 0.35rem;
+  color: var(--color-muted);
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nav-links button {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #1f2937;
+}
+
+.nav-links button.active {
+  background: #f0b90b;
+  color: #0b1426;
+  border-color: #f0b90b;
 }
 
 .auth-status {
@@ -34,7 +78,6 @@ body {
 }
 
 .api-config {
-  margin-top: 0.75rem;
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -43,6 +86,7 @@ body {
 
 .api-config label {
   font-weight: 600;
+  color: var(--color-label);
 }
 
 .api-config input {
@@ -56,41 +100,26 @@ body {
 }
 
 .badge {
-  background: #2d6cdf;
-  color: white;
+  background: #f0b90b;
+  color: #0b1426;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   font-size: 0.75rem;
-}
-
-.tab-bar {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.tab-bar button {
-  border-radius: 999px;
-  padding: 0.5rem 1.5rem;
-  border: 1px solid #cbd5f5;
-  background: white;
-}
-
-.tab-bar button.active {
-  background: #2d6cdf;
-  color: white;
-  border-color: #2d6cdf;
+  font-weight: 600;
 }
 
 .card {
-  background: white;
+  background: #111827;
   padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 8px 24px rgba(3, 7, 18, 0.4);
 }
 
 .message {
-  background: #e0f2fe;
-  color: #0c4a6e;
+  background: #1e293b;
+  color: #f0b90b;
+  border-color: #334155;
 }
 
 .grid {
@@ -110,32 +139,40 @@ body {
   flex-wrap: wrap;
 }
 
+.form-row.compact {
+  margin-bottom: 0;
+}
+
 .form-row label {
   min-width: 70px;
   font-weight: 600;
+  color: var(--color-label);
 }
 
 input,
 select {
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
-  border: 1px solid #cbd5f5;
+  border: 1px solid #1f2937;
+  background: #0f172a;
+  color: #e2e8f0;
   flex: 1;
 }
 
 button {
-  background: #2d6cdf;
-  color: white;
+  background: #f0b90b;
+  color: #0b1426;
   border: none;
   padding: 0.6rem 1.2rem;
   border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
 }
 
 button.ghost {
   background: transparent;
-  color: #2d6cdf;
-  border: 1px solid #2d6cdf;
+  color: #f0b90b;
+  border: 1px solid #f0b90b;
 }
 
 table {
@@ -149,7 +186,7 @@ th,
 td {
   text-align: left;
   padding: 0.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #1f2937;
 }
 
 .balances {
@@ -169,6 +206,7 @@ td {
   height: 360px;
   border: none;
   border-radius: 12px;
+  background: #0f172a;
 }
 
 .checkbox {
@@ -177,4 +215,128 @@ td {
 
 .checkbox input {
   flex: 0;
+}
+
+.market-layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(240px, 1fr);
+}
+
+.market-main {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.market-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.symbol-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.symbol-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.symbol-list li.active {
+  border-color: #f0b90b;
+  background: rgba(240, 185, 11, 0.12);
+}
+
+.symbol-list li.empty {
+  justify-content: center;
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.symbol-tags {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.tag.spot {
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.tag.contract {
+  color: #f97316;
+  border-color: #f97316;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.market-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-layout {
+  display: flex;
+  justify-content: center;
+}
+
+.admin-layout .card {
+  width: 100%;
+  max-width: var(--admin-card-max-width);
+}
+
+.symbol-config-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.symbol-config-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+}
+
+@media (max-width: 1200px) {
+  .market-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    width: 100%;
+    align-items: flex-start;
+  }
 }
