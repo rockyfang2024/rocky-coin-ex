@@ -17,7 +17,8 @@ public class SymbolService {
 
     @PostConstruct
     public void initializeDefaults() {
-        createOrUpdate("BTC/USDT", "BTC", "USDT", true, true);
+        createOrUpdate("BTC/USDT", "BTC", "USDT", true, false);
+        createOrUpdate("BTCUSDT", "BTC", "USDT", false, true);
         createOrUpdate("ETH/USDT", "ETH", "USDT", true, true);
     }
 
