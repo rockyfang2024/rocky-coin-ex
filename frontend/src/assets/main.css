@@ -1,5 +1,11 @@
 @import './base.css';
 
+:root {
+  --color-label: #cbd5f5;
+  --color-muted: #94a3b8;
+  --admin-card-max-width: 720px;
+}
+
 body {
   background: #0b1426;
   color: #e2e8f0;
@@ -37,7 +43,7 @@ body {
 
 .brand p {
   margin-top: 0.35rem;
-  color: #94a3b8;
+  color: var(--color-muted);
 }
 
 .header-actions {
@@ -80,7 +86,7 @@ body {
 
 .api-config label {
   font-weight: 600;
-  color: #cbd5f5;
+  color: var(--color-label);
 }
 
 .api-config input {
@@ -140,7 +146,7 @@ body {
 .form-row label {
   min-width: 70px;
   font-weight: 600;
-  color: #cbd5f5;
+  color: var(--color-label);
 }
 
 input,
@@ -256,7 +262,7 @@ td {
 
 .symbol-list li.empty {
   justify-content: center;
-  color: #94a3b8;
+  color: var(--color-muted);
   cursor: default;
 }
 
@@ -283,7 +289,7 @@ td {
 }
 
 .muted {
-  color: #94a3b8;
+  color: var(--color-muted);
 }
 
 .market-chart-header {
@@ -301,7 +307,8 @@ td {
 }
 
 .admin-layout .card {
-  width: min(720px, 100%);
+  width: 100%;
+  max-width: var(--admin-card-max-width);
 }
 
 .symbol-config-list {

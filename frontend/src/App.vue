@@ -8,7 +8,7 @@ const auth = reactive({
   admin: localStorage.getItem('admin') === 'true',
   userId: Number(localStorage.getItem('userId') || 0)
 })
-const activePage = ref(auth.admin ? 'admin' : 'market')
+const activeView = ref(auth.admin ? 'admin' : 'market')
 const message = ref('')
 
 const loginForm = reactive({ username: '', password: '' })
@@ -109,7 +109,7 @@ const login = async () => {
       body: JSON.stringify(loginForm)
     })
     storeAuth(data)
-    activePage.value = data.admin ? 'admin' : 'market'
+    activeView.value = data.admin ? 'admin' : 'market'
     message.value = `欢迎回来，${data.username}`
     await loadAllData()
   } catch (error) {
@@ -124,7 +124,7 @@ const register = async () => {
       body: JSON.stringify(registerForm)
     })
     storeAuth(data)
-    activePage.value = data.admin ? 'admin' : 'market'
+    activeView.value = data.admin ? 'admin' : 'market'
     message.value = `注册成功，欢迎 ${data.username}`
     await loadAllData()
   } catch (error) {
@@ -134,8 +134,12 @@ const register = async () => {
 
 const logout = () => {
   clearAuth()
-  activePage.value = 'market'
+  activeView.value = 'market'
   message.value = '已退出登录'
+}
+
+const selectSymbol = (symbol) => {
+  selectedSymbol.value = symbol
 }
 
 const syncSymbolSelections = () => {
@@ -316,14 +320,25 @@ onMounted(async () => {
           <input v-model="apiBase" />
         </div>
         <nav v-if="auth.token" class="nav-links">
-          <button :class="{ active: activePage === 'market' }" @click="activePage = 'market'">行情</button>
-          <button :class="{ active: activePage === 'center' }" @click="activePage = 'center'">
+          <button
+            :class="{ active: activeView === 'market' }"
+            :aria-current="activeView === 'market' ? 'page' : undefined"
+            @click="activeView = 'market'"
+          >
+            行情
+          </button>
+          <button
+            :class="{ active: activeView === 'center' }"
+            :aria-current="activeView === 'center' ? 'page' : undefined"
+            @click="activeView = 'center'"
+          >
             个人中心
           </button>
           <button
             v-if="auth.admin"
-            :class="{ active: activePage === 'admin' }"
-            @click="activePage = 'admin'"
+            :class="{ active: activeView === 'admin' }"
+            :aria-current="activeView === 'admin' ? 'page' : undefined"
+            @click="activeView = 'admin'"
           >
             管理后台
           </button>
@@ -372,7 +387,7 @@ onMounted(async () => {
       {{ message }}
     </section>
 
-    <section v-if="auth.token && activePage === 'market'" class="market-layout">
+    <section v-if="auth.token && activeView === 'market'" class="market-layout">
       <div class="card market-list">
         <div class="market-list-header">
           <h2>行情列表</h2>
@@ -383,7 +398,11 @@ onMounted(async () => {
             v-for="symbol in symbols"
             :key="symbol.symbol"
             :class="{ active: selectedSymbol === symbol.symbol }"
-            @click="selectedSymbol = symbol.symbol"
+            role="button"
+            tabindex="0"
+            @click="selectSymbol(symbol.symbol)"
+            @keydown.enter="selectSymbol(symbol.symbol)"
+            @keydown.space.prevent="selectSymbol(symbol.symbol)"
           >
             <div class="symbol-name">{{ symbol.symbol }}</div>
             <div class="symbol-tags">
@@ -508,7 +527,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section v-if="auth.token && activePage === 'center'" class="grid two">
+    <section v-if="auth.token && activeView === 'center'" class="grid two">
       <div class="card">
         <h2>账户资产</h2>
         <div class="balances">
@@ -617,7 +636,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section v-if="auth.token && auth.admin && activePage === 'admin'" class="admin-layout">
+    <section v-if="auth.token && auth.admin && activeView === 'admin'" class="admin-layout">
       <div class="card">
         <h2>币种币对配置</h2>
         <div class="form-row">
