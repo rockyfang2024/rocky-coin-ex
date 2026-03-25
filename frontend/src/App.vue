@@ -150,15 +150,15 @@ const selectContractSymbol = (symbol) => {
   contractSelectedSymbol.value = symbol
 }
 
-const resolvePreferredSymbol = (list, preferred) => {
+const findPreferredSymbol = (list, preferred) => {
   if (!list.length) return ''
   const preferredMatch = list.find((item) => item.symbol === preferred)
-  return preferredMatch?.symbol || list[0].symbol
+  return preferredMatch ? preferredMatch.symbol : list[0]?.symbol || ''
 }
 
 const syncSymbolSelections = () => {
-  const spotPreferred = resolvePreferredSymbol(spotSymbols.value, 'BTC/USDT')
-  const contractPreferred = resolvePreferredSymbol(contractSymbols.value, 'BTCUSDT')
+  const spotPreferred = findPreferredSymbol(spotSymbols.value, 'BTC/USDT')
+  const contractPreferred = findPreferredSymbol(contractSymbols.value, 'BTCUSDT')
   if (!spotSymbols.value.some((symbol) => symbol.symbol === spotSelectedSymbol.value)) {
     spotSelectedSymbol.value = spotPreferred
   }
@@ -312,10 +312,18 @@ const saveSymbol = async () => {
   }
 }
 
-watch(activeSymbol, async (symbol) => {
-  if (symbol) {
-    await loadOrderBook()
+watch([activeView, activeSymbol], async ([view, symbol]) => {
+  if (!symbol) {
+    const availableSymbols = view === 'contract' ? contractSymbols.value : spotSymbols.value
+    if (availableSymbols.length) {
+      syncSymbolSelections()
+      return
+    }
+    orderBook.bids = []
+    orderBook.asks = []
+    return
   }
+  await loadOrderBook()
 })
 
 onMounted(async () => {
