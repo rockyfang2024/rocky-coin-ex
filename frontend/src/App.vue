@@ -8,7 +8,7 @@ const auth = reactive({
   admin: localStorage.getItem('admin') === 'true',
   userId: Number(localStorage.getItem('userId') || 0)
 })
-const activeView = ref(auth.admin ? 'admin' : 'market')
+const activeView = ref(auth.admin ? 'admin' : 'spot')
 const message = ref('')
 
 const loginForm = reactive({ username: '', password: '' })
@@ -44,7 +44,11 @@ const adminSymbolForm = reactive({
 const symbols = ref([])
 const spotSymbols = computed(() => symbols.value.filter((symbol) => symbol.spotEnabled))
 const contractSymbols = computed(() => symbols.value.filter((symbol) => symbol.contractEnabled))
-const selectedSymbol = ref('')
+const spotSelectedSymbol = ref('')
+const contractSelectedSymbol = ref('')
+const activeSymbol = computed(() =>
+  activeView.value === 'contract' ? contractSelectedSymbol.value : spotSelectedSymbol.value
+)
 const orderBook = reactive({ bids: [], asks: [] })
 const balances = ref({})
 const orders = ref([])
@@ -53,8 +57,8 @@ const trades = ref([])
 const adminSymbols = ref([])
 
 const chartUrl = computed(() => {
-  if (!selectedSymbol.value) return ''
-  const cleanSymbol = selectedSymbol.value.replace('/', '')
+  if (!activeSymbol.value) return ''
+  const cleanSymbol = activeSymbol.value.replace('/', '')
   return `https://s.tradingview.com/widgetembed/?symbol=BINANCE:${cleanSymbol}&interval=1&hidesidetoolbar=1&theme=dark`
 })
 
@@ -109,7 +113,7 @@ const login = async () => {
       body: JSON.stringify(loginForm)
     })
     storeAuth(data)
-    activeView.value = data.admin ? 'admin' : 'market'
+    activeView.value = data.admin ? 'admin' : 'spot'
     message.value = `欢迎回来，${data.username}`
     await loadAllData()
   } catch (error) {
@@ -124,7 +128,7 @@ const register = async () => {
       body: JSON.stringify(registerForm)
     })
     storeAuth(data)
-    activeView.value = data.admin ? 'admin' : 'market'
+    activeView.value = data.admin ? 'admin' : 'spot'
     message.value = `注册成功，欢迎 ${data.username}`
     await loadAllData()
   } catch (error) {
@@ -134,24 +138,38 @@ const register = async () => {
 
 const logout = () => {
   clearAuth()
-  activeView.value = 'market'
+  activeView.value = 'spot'
   message.value = '已退出登录'
 }
 
-const selectSymbol = (symbol) => {
-  selectedSymbol.value = symbol
+const selectSpotSymbol = (symbol) => {
+  spotSelectedSymbol.value = symbol
+}
+
+const selectContractSymbol = (symbol) => {
+  contractSelectedSymbol.value = symbol
+}
+
+const findPreferredSymbol = (list, preferred) => {
+  if (!list.length) return ''
+  const preferredMatch = list.find((item) => item.symbol === preferred)
+  return preferredMatch ? preferredMatch.symbol : list[0]?.symbol || ''
 }
 
 const syncSymbolSelections = () => {
-  const allSymbols = symbols.value.map((symbol) => symbol.symbol)
-  if (!allSymbols.includes(selectedSymbol.value)) {
-    selectedSymbol.value = allSymbols[0] || ''
+  const spotPreferred = findPreferredSymbol(spotSymbols.value, 'BTC/USDT')
+  const contractPreferred = findPreferredSymbol(contractSymbols.value, 'BTCUSDT')
+  if (!spotSymbols.value.some((symbol) => symbol.symbol === spotSelectedSymbol.value)) {
+    spotSelectedSymbol.value = spotPreferred
+  }
+  if (!contractSymbols.value.some((symbol) => symbol.symbol === contractSelectedSymbol.value)) {
+    contractSelectedSymbol.value = contractPreferred
   }
   if (!spotSymbols.value.some((symbol) => symbol.symbol === spotOrderForm.symbol)) {
-    spotOrderForm.symbol = spotSymbols.value[0]?.symbol || ''
+    spotOrderForm.symbol = spotPreferred
   }
   if (!contractSymbols.value.some((symbol) => symbol.symbol === contractOrderForm.symbol)) {
-    contractOrderForm.symbol = contractSymbols.value[0]?.symbol || ''
+    contractOrderForm.symbol = contractPreferred
   }
 }
 
@@ -161,10 +179,10 @@ const loadSymbols = async () => {
 }
 
 const loadOrderBook = async () => {
-  if (!selectedSymbol.value) return
+  if (!activeSymbol.value) return
   orderBook.bids = []
   orderBook.asks = []
-  const data = await request(`/api/trading/orderbook?symbol=${encodeURIComponent(selectedSymbol.value)}`)
+  const data = await request(`/api/trading/orderbook?symbol=${encodeURIComponent(activeSymbol.value)}`)
   orderBook.bids = data.bids || []
   orderBook.asks = data.asks || []
 }
@@ -294,7 +312,17 @@ const saveSymbol = async () => {
   }
 }
 
-watch(selectedSymbol, async () => {
+watch([activeView, activeSymbol], async ([view, symbol]) => {
+  if (!symbol) {
+    const availableSymbols = view === 'contract' ? contractSymbols.value : spotSymbols.value
+    if (availableSymbols.length) {
+      syncSymbolSelections()
+      return
+    }
+    orderBook.bids = []
+    orderBook.asks = []
+    return
+  }
   await loadOrderBook()
 })
 
@@ -321,11 +349,18 @@ onMounted(async () => {
         </div>
         <nav v-if="auth.token" class="nav-links">
           <button
-            :class="{ active: activeView === 'market' }"
-            :aria-current="activeView === 'market' ? 'page' : undefined"
-            @click="activeView = 'market'"
+            :class="{ active: activeView === 'spot' }"
+            :aria-current="activeView === 'spot' ? 'page' : undefined"
+            @click="activeView = 'spot'"
           >
-            行情
+            现货
+          </button>
+          <button
+            :class="{ active: activeView === 'contract' }"
+            :aria-current="activeView === 'contract' ? 'page' : undefined"
+            @click="activeView = 'contract'"
+          >
+            合约
           </button>
           <button
             :class="{ active: activeView === 'center' }"
@@ -387,30 +422,29 @@ onMounted(async () => {
       {{ message }}
     </section>
 
-    <section v-if="auth.token && activeView === 'market'" class="market-layout">
+    <section v-if="auth.token && activeView === 'spot'" class="market-layout">
       <div class="card market-list">
         <div class="market-list-header">
-          <h2>行情列表</h2>
-          <span class="muted">{{ symbols.length }} 个币对</span>
+          <h2>现货行情</h2>
+          <span class="muted">{{ spotSymbols.length }} 个币对</span>
         </div>
         <ul class="symbol-list">
           <li
-            v-for="symbol in symbols"
+            v-for="symbol in spotSymbols"
             :key="symbol.symbol"
-            :class="{ active: selectedSymbol === symbol.symbol }"
+            :class="{ active: spotSelectedSymbol === symbol.symbol }"
             role="button"
             tabindex="0"
-            @click="selectSymbol(symbol.symbol)"
-            @keydown.enter="selectSymbol(symbol.symbol)"
-            @keydown.space.prevent="selectSymbol(symbol.symbol)"
+            @click="selectSpotSymbol(symbol.symbol)"
+            @keydown.enter="selectSpotSymbol(symbol.symbol)"
+            @keydown.space.prevent="selectSpotSymbol(symbol.symbol)"
           >
             <div class="symbol-name">{{ symbol.symbol }}</div>
             <div class="symbol-tags">
-              <span v-if="symbol.spotEnabled" class="tag spot">现货</span>
-              <span v-if="symbol.contractEnabled" class="tag contract">合约</span>
+              <span class="tag spot">现货</span>
             </div>
           </li>
-          <li v-if="symbols.length === 0" class="empty">暂无币对</li>
+          <li v-if="spotSymbols.length === 0" class="empty">暂无币对</li>
         </ul>
       </div>
 
@@ -418,13 +452,13 @@ onMounted(async () => {
         <div class="card market-chart">
           <div class="market-chart-header">
             <div>
-              <h2>行情图表</h2>
+              <h2>现货行情图表</h2>
               <p class="muted">TradingView 实时行情</p>
             </div>
             <div class="form-row compact">
               <label>交易对</label>
-              <select v-model="selectedSymbol">
-                <option v-for="symbol in symbols" :key="symbol.symbol" :value="symbol.symbol">
+              <select v-model="spotSelectedSymbol">
+                <option v-for="symbol in spotSymbols" :key="symbol.symbol" :value="symbol.symbol">
                   {{ symbol.symbol }}
                 </option>
               </select>
@@ -461,7 +495,90 @@ onMounted(async () => {
             </div>
             <button @click="placeSpotOrder">下单</button>
           </div>
+        </div>
+      </div>
 
+      <div class="card market-orderbook">
+        <h2>盘口（Order Book）</h2>
+        <div class="orderbook">
+          <div>
+            <h3>买单</h3>
+            <table>
+              <thead>
+                <tr><th>价格</th><th>数量</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="bid in orderBook.bids" :key="bid.id">
+                  <td>{{ bid.price }}</td>
+                  <td>{{ bid.quantity }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3>卖单</h3>
+            <table>
+              <thead>
+                <tr><th>价格</th><th>数量</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="ask in orderBook.asks" :key="ask.id">
+                  <td>{{ ask.price }}</td>
+                  <td>{{ ask.quantity }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="auth.token && activeView === 'contract'" class="market-layout">
+      <div class="card market-list">
+        <div class="market-list-header">
+          <h2>合约行情</h2>
+          <span class="muted">{{ contractSymbols.length }} 个币对</span>
+        </div>
+        <ul class="symbol-list">
+          <li
+            v-for="symbol in contractSymbols"
+            :key="symbol.symbol"
+            :class="{ active: contractSelectedSymbol === symbol.symbol }"
+            role="button"
+            tabindex="0"
+            @click="selectContractSymbol(symbol.symbol)"
+            @keydown.enter="selectContractSymbol(symbol.symbol)"
+            @keydown.space.prevent="selectContractSymbol(symbol.symbol)"
+          >
+            <div class="symbol-name">{{ symbol.symbol }}</div>
+            <div class="symbol-tags">
+              <span class="tag contract">合约</span>
+            </div>
+          </li>
+          <li v-if="contractSymbols.length === 0" class="empty">暂无币对</li>
+        </ul>
+      </div>
+
+      <div class="market-main">
+        <div class="card market-chart">
+          <div class="market-chart-header">
+            <div>
+              <h2>合约行情图表</h2>
+              <p class="muted">TradingView 实时行情</p>
+            </div>
+            <div class="form-row compact">
+              <label>交易对</label>
+              <select v-model="contractSelectedSymbol">
+                <option v-for="symbol in contractSymbols" :key="symbol.symbol" :value="symbol.symbol">
+                  {{ symbol.symbol }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <iframe v-if="chartUrl" :src="chartUrl" class="chart-frame" allowfullscreen></iframe>
+        </div>
+
+        <div class="grid two market-trade">
           <div class="card">
             <h2>合约交易</h2>
             <div class="form-row">
